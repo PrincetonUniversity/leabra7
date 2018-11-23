@@ -379,8 +379,9 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         """Overrides `event.EventListenerMixin.handle()`."""
         if isinstance(event, events.Learn):
             self.learn()
-        elif isinstance(event, events.EndTrial):
-            self.update_trial_learning_cos_diff()
+        elif isinstance(event, events.EndPhase):
+            if event.phase == self.plus_phase:
+                self.update_trial_learning_cos_diff()
         elif isinstance(event, events.InhibitProjns):
             if self.name in event.projn_names:
                 self.inhibit()
