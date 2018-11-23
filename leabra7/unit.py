@@ -297,22 +297,22 @@ class UnitGroup:
         self.avg_m += self.spec.integ * self.spec.m_dt * (
             self.avg_s - self.avg_m)
 
-    def update_trial_learning_averages(self, acts_p_avg_eff: float) -> None:
+    def update_trial_learning_averages(self, acts_t_avg_eff: float) -> None:
         """Updates the learning averages computed at the end of each trial.
 
         Args:
-          acts_p_avg: The average layer activation at the end of a plus phase.
+          acts_t_avg: The average layer activation at the end of a trial.
             The "eff" (effective) suffix denotes that it can be
             scaled by a multiplier, but this is currently not
             implemented.
 
         """
-        self.avg_l = self.spec.l_dn_dt * acts_p_avg_eff * (
+        self.avg_l = self.spec.l_dn_dt * acts_t_avg_eff * (
             self.avg_m - self.avg_l)
         mask = self.avg_m > 0.1
         not_mask = ~mask
         self.avg_l[mask] += self.avg_m[mask] * self.spec.l_up_inc
-        self.avg_l[not_mask] += self.spec.l_dn_dt * acts_p_avg_eff * (
+        self.avg_l[not_mask] += self.spec.l_dn_dt * acts_t_avg_eff * (
             self.avg_m[not_mask] - self.avg_l[not_mask])
 
     def top_k_net_indices(self, k: int) -> torch.Tensor:
