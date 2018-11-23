@@ -256,8 +256,7 @@ class LayerSpec(ObservableSpec):
         # (we represent in two places to avoid a circular dependency)
         return ("avg_act", "avg_net", "fbi", "unit_net_raw", "unit_net",
                 "unit_gc_i", "unit_act", "unit_i_net", "unit_i_net_r",
-                "unit_v_m", "unit_v_m_eq", "unit_adapt", "unit_spike",
-                "cos_diff_avg")
+                "unit_v_m", "unit_v_m_eq", "unit_adapt", "unit_spike")
 
     def validate(self) -> None:
         """Extends `Spec.validate`."""
@@ -314,6 +313,10 @@ class ProjnSpec(ObservableSpec):
     sig_gain = 6
     # Offset for sigmoidal weight contrast enhancement
     sig_offset = 1
+    # Minus phase
+    minus_phase = events.MinusPhase
+    # Plus phase
+    plus_phase = events.PlusPhase
 
     @property
     def _valid_attrs_to_log(self) -> Iterable[str]:
@@ -322,7 +325,7 @@ class ProjnSpec(ObservableSpec):
         # When adding any loggable attribute or property to this list,
         # update Projn._whole_attrs or Projn._parts_attrs as appropriate
         # (we represent in two places to avoid a circular dependency)
-        return ("conn_wt", "conn_fwt")
+        return ("conn_wt", "conn_fwt", "cos_diff_avg")
 
     def validate(self) -> None:  # pylint: disable=W0235
         """Extends `Spec.validate`."""
@@ -342,6 +345,12 @@ class ProjnSpec(ObservableSpec):
         self.assert_in_range("wt_scale_abs", 0, float("Inf"))
         self.assert_in_range("wt_scale_rel", 0, float("Inf"))
         self.assert_in_range("lrate", 0, float("Inf"))
+        self.assert_in_range("thr_l_mix", 0, float("Inf"))
+        self.assert_in_range("cos_diff_thr_l_mix", 0, float("Inf"))
         self.assert_in_range("sig_gain", 0, float("Inf"))
         self.assert_sane_float("sig_offset")
-        self.assert_in_range("thr_l_mix", 0, float("Inf"))
+
+        if self.minus_phase == self.plus_phase:
+            raise ValidationError(
+                "Minus and plus phase cannot both be {0}".format(
+                    self.minus_phase))

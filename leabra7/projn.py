@@ -12,6 +12,7 @@ from leabra7 import specs
 from leabra7 import layer
 from leabra7 import log
 from leabra7 import events
+from leabra7 import utils
 
 T = TypeVar('T')
 
@@ -186,10 +187,17 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         self.pre = pre
         self.post = post
 
+        self.cos_diff = 0.0
+        self.cos_diff_avg = 0.0
+        self.blocked = False
+
         if spec is None:
             self._spec = specs.ProjnSpec()
         else:
             self._spec = spec
+
+        self.minus_phase = self._spec.minus_phase
+        self.plus_phase = self._spec.plus_phase
 
         # A matrix where each element is the weight of a connection.
         # Rows encode the postsynaptic units, and columns encode the
@@ -226,7 +234,7 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         # When adding any loggable attribute or property to these lists, update
         # specs.ProjnSpec._valid_log_on_cycle (we represent in two places to
         # avoid a circular dependency)
-        whole_attrs: List[str] = []
+        whole_attrs: List[str] = ["cos_diff_avg"]
         parts_attrs: List[str] = ["conn_wt", "conn_fwt"]
 
         super().__init__(whole_attrs=whole_attrs, parts_attrs=parts_attrs)
@@ -275,10 +283,28 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         layer makes it easier to compute the net input scaling factor.
 
         """
-        wt_scale_act = self.netin_scale()
-        self.post.add_input(
-            self.spec.wt_scale_abs * wt_scale_act *
-            (self.wts @ self.pre.units.act), self.spec.wt_scale_rel)
+        if not self.blocked:
+            wt_scale_act = self.netin_scale()
+            self.post.add_input(
+                self.spec.wt_scale_abs * wt_scale_act *
+                (self.wts @ self.pre.units.act), self.spec.wt_scale_rel)
+
+    def inhibit(self) -> None:
+        """Block sending layer activation to the recieving layer."""
+        self.blocked = True
+
+    def uninhibit(self) -> None:
+        """Unblock sending layer activation to the recieving layer."""
+        self.blocked = False
+
+    def update_trial_learning_cos_diff(self) -> None:
+        cos_diff = torch.nn.functional.cosine_similarity(
+            self.post.phase_acts[self.plus_phase],
+            self.post.phase_acts[self.minus_phase],
+            dim=0)
+        self.cos_diff = utils.clip_float(low=0.01, high=0.99, x=cos_diff)
+        self.cos_diff_avg = self.post.spec.avg_dt * (
+            cos_diff - self.cos_diff_avg)
 
     #pylint: disable=R0914
     def learn(self) -> None:
@@ -290,7 +316,7 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         sm_mix = s_mix * srs + (1 - s_mix) * srm
 
         # Compute cos diff avg
-        cos_diff_avg = self.post.cos_diff_avg
+        cos_diff_avg = self.cos_diff_avg
         if not self.spec.cos_diff_thr_l_mix:
             cos_diff_avg = 1
         if not self.post.hidden:
@@ -299,8 +325,8 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         # Compute the learning rate modifier, if enabled
         lrate_mod = 1.0
         if self.spec.cos_diff_lrate:
-            diff = self.post.cos_diff
-            diff_avg = self.post.cos_diff_avg
+            diff = self.cos_diff
+            diff_avg = self.cos_diff_avg
             lo_diff = 0.0
             lo_lrate = 0.01
             hi_diff = 1.0
@@ -353,3 +379,11 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         """Overrides `event.EventListenerMixin.handle()`."""
         if isinstance(event, events.Learn):
             self.learn()
+        elif isinstance(event, events.EndTrial):
+            self.update_trial_learning_cos_diff()
+        elif isinstance(event, events.InhibitProjns):
+            if self.name in event.projn_names:
+                self.inhibit()
+        elif isinstance(event, events.UninhibitProjns):
+            if self.name in event.projn_names:
+                self.uninhibit()

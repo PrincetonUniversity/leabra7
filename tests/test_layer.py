@@ -1,6 +1,7 @@
 """Test layer.py"""
 import math
 
+from hypothesis import example
 from hypothesis import given
 import hypothesis.strategies as st
 import numpy as np
@@ -118,7 +119,7 @@ def test_layer_can_update_learning_averages_when_hard_clamped(mocker) -> None:
 
     layer.hard_clamp([1.0])
     layer.activation_cycle()
-    layer.handle(ev.EndPlusPhase())
+    layer.handle(ev.EndTrial())
 
     layer.units.update_cycle_learning_averages.assert_called_once()
     layer.update_trial_learning_averages.assert_called_once()
@@ -173,23 +174,8 @@ def test_hard_clamp_event_does_nothing_if_the_names_do_not_match() -> None:
     assert not layer.clamped
 
 
-def test_hard_clamp_event_marks_layer_as_not_hidden() -> None:
-    clamp = ev.HardClamp(layer_name="lr1", acts=[0.7, 0.7])
+def test_end_trial_event_saves_activations() -> None:
     layer = lr.Layer("lr1", 3)
-    assert layer.hidden
-    layer.handle(clamp)
-    assert not layer.hidden
-
-
-def test_end_plus_phase_event_saves_activations() -> None:
-    layer = lr.Layer("lr1", 3)
-    layer.hard_clamp([0.8, 0, 0.8])
-    layer.handle(ev.EndPlusPhase())
-    assert (layer.acts_p == torch.Tensor([0.8, 0, 0.8])).all()
-
-
-def test_end_minus_phase_event_saves_activations() -> None:
-    layer = lr.Layer("lr1", 3)
-    layer.hard_clamp([0.8, 0, 0.5])
-    layer.handle(ev.EndMinusPhase())
-    assert (layer.acts_m == torch.Tensor([0.8, 0, 0.5])).all()
+    layer.hard_clamp([1, 0, 1])
+    layer.handle(ev.EndTrial())
+    assert (layer.acts_t == torch.Tensor([0.95, 0, 0.95])).all()
