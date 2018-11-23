@@ -128,7 +128,7 @@ def test_layer_can_update_learning_averages_when_hard_clamped(mocker) -> None:
 def test_layer_hard_clamping_should_change_the_unit_activations() -> None:
     layer = lr.Layer(name="in", size=4)
     layer.hard_clamp([0, 1])
-    expected = [0, 1, 0, 1]
+    expected = [0, 0.95, 0, 0.95]
     for i in range(4):
         assert math.isclose(layer.units.act[i], expected[i], abs_tol=1e-6)
 
@@ -137,8 +137,17 @@ def test_layer_set_hard_clamp() -> None:
     layer = lr.Layer(name="in", size=3)
     layer.hard_clamp(act_ext=[0, 1])
     layer.activation_cycle()
-    expected = [0, 1, 0]
+    expected = [0, 0.95, 0]
     for i in range(3):
+        assert math.isclose(layer.units.act[i], expected[i], abs_tol=1e-6)
+
+
+def test_layer_hard_clamping_respects_clamp_max() -> None:
+    layer = lr.Layer(name="in", size=3, spec=sp.LayerSpec(clamp_max=0.5))
+    layer.hard_clamp(act_ext=[0, 1])
+    layer.handle(ev.HardClamp(layer_name="lr1", acts=[0, 1]))
+    expected = [0, 0.5, 0]
+    for i in range(len(expected)):
         assert math.isclose(layer.units.act[i], expected[i], abs_tol=1e-6)
 
 
@@ -147,7 +156,7 @@ def test_layer_can_unclamp() -> None:
     layer.hard_clamp([0, 1])
     layer.unclamp()
     assert not layer.clamped
-    assert list(layer.units.act) == [0, 1, 0, 1]
+    assert list(layer.units.act) == [0, 0.95, 0, 0.95]
 
 
 def test_hard_clamp_event_hard_clamps_a_layer_if_the_names_match() -> None:
@@ -169,4 +178,4 @@ def test_end_trial_event_saves_activations() -> None:
     layer = lr.Layer("lr1", 3)
     layer.hard_clamp([1, 0, 1])
     layer.handle(ev.EndTrial())
-    assert (layer.acts_t == torch.Tensor([1, 0, 1])).all()
+    assert (layer.acts_t == torch.Tensor([0.95, 0, 0.95])).all()

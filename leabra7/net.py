@@ -189,6 +189,9 @@ class Net(events.EventListenerMixin):
         After unclamping, the layer's activations will be
         updated each cycle.
 
+        Args:
+            name: The name of the layer to unclamp.
+
         """
         self._validate_layer_name(*layer_names)
         self.handle(events.Unclamp(*layer_names))
@@ -268,7 +271,7 @@ class Net(events.EventListenerMixin):
           ValueError: If num_cycles is less than 1.
 
         """
-        if phase.type == events.PhaseType.NONE:
+        if phase == events.NonePhase:
             raise ValueError("Cannot cycle 'none' phase {0}.".format(
                 phase.name))
         if num_cycles < 1:
@@ -342,15 +345,17 @@ class Net(events.EventListenerMixin):
           ValueError: if the object does not exist, does not support
             observations, or the attribute is not a valid loggable attribute.
 
+        Returns:
+          A dataframe containing the observation value.
+
         """
         try:
             obj = self.objs[name]
             # We use isinstance instead of catching AttributeError for MyPy
             if isinstance(obj, log.ObservableMixin):
                 return obj.observe(attr)
-            else:
-                raise ValueError(
-                    "Object {0} does not support observations.".format(name))
+            raise ValueError(
+                "Object {0} does not support observations.".format(name))
         except KeyError:
             raise ValueError("No object with name {0} found.".format(name))
 
@@ -359,7 +364,7 @@ class Net(events.EventListenerMixin):
 
         Args:
             freq: The frequency at which the desired logs were recorded. One
-                of `["cycle"]`.
+                of `["cycle", "trial", "epoch", "batch"]`.
             name: The name of the object for which the logs were recorded.
 
         Raises:

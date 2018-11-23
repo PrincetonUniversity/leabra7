@@ -163,51 +163,10 @@ def test_it_should_validate_syn_tr(f) -> None:
         sp.UnitSpec(syn_tr=f).validate()
 
 
-@given(float_outside_range(0, 1.0))
-def test_it_should_validate_act_min(f) -> None:
-    with pytest.raises(sp.ValidationError):
-        sp.UnitSpec(act_min=f).validate()
-
-
-@given(float_outside_range(0, 1.0))
-def test_it_should_validate_act_max(f) -> None:
-    with pytest.raises(sp.ValidationError):
-        sp.UnitSpec(act_max=f).validate()
-
-
-@given(insane_float)
-def test_it_should_validate_vm_min_sanity(f) -> None:
-    with pytest.raises(sp.ValidationError):
-        sp.UnitSpec(vm_min=f).validate()
-
-
-@given(insane_float)
-def test_it_should_validate_vm_max_sanity(f) -> None:
-    with pytest.raises(sp.ValidationError):
-        sp.UnitSpec(vm_max=f).validate()
-
-
 @given(float_outside_range(0, float("Inf")))
 def test_it_should_validate_act_gain_positive(f) -> None:
     with pytest.raises(sp.ValidationError):
         sp.UnitSpec(act_gain=f).validate()
-
-
-def test_it_should_validate_act_min_is_less_than_act_max() -> None:
-    with pytest.raises(sp.ValidationError):
-        sp.UnitSpec(act_min=1.0, act_max=0.5).validate()
-
-
-def test_it_should_validate_vm_min_is_less_than_vm_max() -> None:
-    with pytest.raises(sp.ValidationError):
-        sp.UnitSpec(vm_min=1.0, vm_max=0.5).validate()
-
-
-def test_it_should_validate_v_m_r_in_range() -> None:
-    with pytest.raises(sp.ValidationError):
-        sp.UnitSpec(vm_min=1.0, vm_max=1.5, v_m_r=0.3).validate()
-    with pytest.raises(sp.ValidationError):
-        sp.UnitSpec(vm_min=0.1, vm_max=0.15, v_m_r=0.3).validate()
 
 
 @given(float_outside_range(0, float("Inf")))
@@ -328,6 +287,12 @@ def test_it_should_check_for_invalid_log_on_batch_attrs() -> None:
         sp.LayerSpec(log_on_batch=("whales", )).validate()
 
 
+@given(float_outside_range(0, 1.0))
+def test_it_should_check_for_invalid_clamp_max(f) -> None:
+    with pytest.raises(sp.ValidationError):
+        sp.LayerSpec(clamp_max=f).validate()
+
+
 # Test ProjnSpec validation
 @given(float_outside_range(0, float("Inf")))
 def test_projn_spec_validates_integ(f) -> None:
@@ -387,34 +352,22 @@ def test_projn_spec_validates_sig_offset(f) -> None:
         sp.ProjnSpec(sig_offset=f).validate()
 
 
-def test_projn_spec_validates_minus_phase_type() -> None:
-    PhaseNone = ev.Phase(name="phase_none", phase_type="none")
-    sp.ProjnSpec(minus_phase=PhaseNone).validate()
-
-    PhaseMinus = ev.Phase(name="phase_minus", phase_type="minus")
-    sp.ProjnSpec(minus_phase=PhaseMinus).validate()
-
-    PhasePlus = ev.Phase(name="phase_plus", phase_type="plus")
-    with pytest.raises(sp.ValidationError):
-        sp.ProjnSpec(minus_phase=PhasePlus, plus_phase=PhaseNone).validate()
-
-
-def test_projn_spec_validates_plus_phase_type() -> None:
-    PhaseNone = ev.Phase(name="phase_none", phase_type="none")
-    sp.ProjnSpec(plus_phase=PhaseNone).validate()
-
-    PhasePlus = ev.Phase(name="phase_plus", phase_type="plus")
-    sp.ProjnSpec(plus_phase=PhasePlus).validate()
-
-    PhaseMinus = ev.Phase(name="phase_minus", phase_type="minus")
-    with pytest.raises(sp.ValidationError):
-        sp.ProjnSpec(minus_phase=PhaseNone, plus_phase=PhaseMinus).validate()
-
-
 def test_projn_spec_validates_different_plus_and_minus_phases() -> None:
     with pytest.raises(sp.ValidationError):
         sp.ProjnSpec(
             minus_phase=ev.NonePhase, plus_phase=ev.NonePhase).validate()
+
+
+@given(float_outside_range(0, float("Inf")))
+def test_projn_spec_validates_thr_l_mix(f) -> None:
+    with pytest.raises(sp.ValidationError):
+        sp.ProjnSpec(thr_l_mix=f).validate()
+
+
+@given(float_outside_range(0, float("Inf")))
+def test_projn_spec_validates_cos_diff_thr_l_mix(f) -> None:
+    with pytest.raises(sp.ValidationError):
+        sp.ProjnSpec(cos_diff_thr_l_mix=f).validate()
 
 
 def test_projn_spec_validates_attrs_to_log() -> None:

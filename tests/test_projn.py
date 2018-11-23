@@ -60,15 +60,15 @@ def test_projn_can_inhibit_flush() -> None:
 
 
 def test_projn_can_uninhibit_flush() -> None:
-    pre = lr.Layer("lr1", size=1)
+    pre = lr.Layer("lr1", size=1, spec=sp.LayerSpec(clamp_max=1))
     post = lr.Layer("lr2", size=1)
     projn = pr.Projn("proj", pre, post)
 
     pre.hard_clamp(act_ext=[1])
 
-    projn.inhibit()
+    projn.handle(ev.InhibitProjns("proj"))
     projn.flush()
-    projn.uninhibit()
+    projn.handle(ev.UninhibitProjns("proj"))
     projn.flush()
 
     assert post.input_buffer == 0.5
@@ -85,21 +85,6 @@ def test_projn_inhibit_handling_event() -> None:
     projn.flush()
 
     assert post.input_buffer == 0.0
-
-
-def test_projn_can_uninhibit_flush() -> None:
-    pre = lr.Layer("lr1", size=1)
-    post = lr.Layer("lr2", size=1)
-    projn = pr.Projn("proj", pre, post)
-
-    pre.hard_clamp(act_ext=[1])
-
-    projn.handle(ev.InhibitProjns("proj"))
-    projn.flush()
-    projn.handle(ev.UninhibitProjns("proj"))
-    projn.flush()
-
-    assert post.input_buffer == 0.5
 
 
 def test_projn_can_mask_pre_layer_units() -> None:

@@ -10,6 +10,7 @@ from leabra7 import log
 from leabra7 import specs
 from leabra7 import events
 from leabra7 import unit
+from leabra7 import utils
 
 
 def _parse_unit_attr(attr: str) -> str:
@@ -68,11 +69,14 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         self.gc_i = 0.0
         # Is the layer activation clamped?
         self.clamped = False
+        # Is this a hidden layer? (i.e. has never been clamped)
+        self.hidden = True
         # Set k units for inhibition
         self.k = max(1, int(round(self.size * self.spec.kwta_pct)))
 
         # Desired clamping values
         self.act_ext = torch.Tensor(self.size).zero_()
+
         # Phase activation
         self.phase_acts: Dict[events.Phase, torch.Tensor] = dict()
         for phase in events.Phase.phases():
@@ -156,7 +160,7 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         # Feedforward inhibition
         ffi = self.spec.ff * max(self.avg_net - self.spec.ff0, 0)
         # Feedback inhibition
-        self.fbi = self.spec.fb_dt * (self.spec.fb * self.avg_act - self.fbi)
+        self.fbi += self.spec.fb_dt * (self.spec.fb * self.avg_act - self.fbi)
         # Global inhibition
         self.gc_i = self.spec.gi * (ffi * self.fbi)
 
@@ -205,7 +209,6 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
 
     def update_trial_learning_averages(self) -> None:
         """Updates the learning averages computed at the end of each trial."""
-
         self.acts_t = self.units.act
         acts_t_avg_eff = self.acts_t.mean()
         self.units.update_trial_learning_averages(acts_t_avg_eff)
@@ -239,8 +242,10 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
 
         """
         self.clamped = True
+        self.hidden = False
+        trimmed = utils.clip_iterable(0.0, self.spec.clamp_max, act_ext)
         self.act_ext = torch.Tensor(
-            list(itertools.islice(itertools.cycle(act_ext), self.size)))
+            list(itertools.islice(itertools.cycle(trimmed), self.size)))
         self.units.hard_clamp(self.act_ext)
 
     def unclamp(self) -> None:

@@ -187,6 +187,7 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         self.pre = pre
         self.post = post
 
+        self.cos_diff = 0.0
         self.cos_diff_avg = 0.0
         self.blocked = False
 
@@ -301,10 +302,11 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
             self.post.phase_acts[self.plus_phase],
             self.post.phase_acts[self.minus_phase],
             dim=0)
-        cos_diff = utils.clip_float(low=0.01, high=0.99, x=cos_diff)
+        self.cos_diff = utils.clip_float(low=0.01, high=0.99, x=cos_diff)
         self.cos_diff_avg = self.post.spec.avg_dt * (
             cos_diff - self.cos_diff_avg)
 
+    #pylint: disable=R0914
     def learn(self) -> None:
         """Updates weights with XCAL learning equation."""
         # Compute weight changes
@@ -312,10 +314,38 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         srm = torch.ger(self.post.avg_m, self.pre.avg_m)
         s_mix = 0.9
         sm_mix = s_mix * srs + (1 - s_mix) * srm
-        thr_l_mix = 0.05
-        lthr = thr_l_mix * self.cos_diff_avg * torch.ger(
-            self.post.avg_m, self.pre.avg_l)
-        mthr = (1 - thr_l_mix * self.cos_diff_avg) * srm
+
+        # Compute cos diff avg
+        cos_diff_avg = self.cos_diff_avg
+        if not self.spec.cos_diff_thr_l_mix:
+            cos_diff_avg = 1
+        if not self.post.hidden:
+            cos_diff_avg = 0  # Clamped layers should not use Hebbian learning
+
+        # Compute the learning rate modifier, if enabled
+        lrate_mod = 1.0
+        if self.spec.cos_diff_lrate:
+            diff = self.cos_diff
+            diff_avg = self.cos_diff_avg
+            lo_diff = 0.0
+            lo_lrate = 0.01
+            hi_diff = 1.0
+            hi_lrate = 0.01
+
+            if diff <= lo_diff:
+                lrate_mod = lo_lrate
+            elif diff >= hi_diff:
+                lrate_mod = hi_lrate
+            elif diff < diff_avg:
+                lrate_mod = 1.0 - ((diff_avg - diff) / (diff_avg - lo_diff))
+                lrate_mod = lo_lrate + (1.0 - lo_lrate) * lrate_mod
+            else:
+                lrate_mod = 1.0 - ((diff - diff_avg) / (hi_diff - diff_avg))
+                lrate_mod = hi_lrate + (1.0 - hi_lrate) * lrate_mod
+
+        lthr = torch.ger(self.post.avg_l,
+                         self.pre.avg_m * self.spec.thr_l_mix * cos_diff_avg)
+        mthr = (1 - self.spec.thr_l_mix * cos_diff_avg) * srm
         dwts = self.spec.lrate * xcal(sm_mix, lthr + mthr)
         dwts[~self.mask] = 0
 
@@ -349,9 +379,8 @@ class Projn(events.EventListenerMixin, log.ObservableMixin):
         """Overrides `event.EventListenerMixin.handle()`."""
         if isinstance(event, events.Learn):
             self.learn()
-        elif isinstance(event, events.EndPhase):
-            if event.phase == self.plus_phase:
-                self.update_trial_learning_cos_diff()
+        elif isinstance(event, events.EndTrial):
+            self.update_trial_learning_cos_diff()
         elif isinstance(event, events.InhibitProjns):
             if self.name in event.projn_names:
                 self.inhibit()

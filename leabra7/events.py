@@ -1,7 +1,5 @@
 """Components for the AST that a leabra7 network can run."""
 import abc
-from enum import auto
-from enum import Enum
 import inspect
 from typing import Dict
 from typing import Set
@@ -212,24 +210,6 @@ EpochFreq = Frequency(name="epoch", end_event_type=EndEpoch)
 BatchFreq = Frequency(name="batch", end_event_type=EndBatch)
 
 
-class PhaseType(Enum):
-    PLUS = auto()
-    MINUS = auto()
-    NONE = auto()
-
-    @classmethod
-    def get_phase_type(cls, name: str) -> "PhaseType":
-        if name == "plus":
-            return PhaseType.PLUS
-        elif name == "minus":
-            return PhaseType.MINUS
-        elif name == "none":
-            return PhaseType.NONE
-
-        raise ValueError("""Invalid: Phase type '{0}' is not one of
-            'plus', 'minus', or 'none'""".format(name))
-
-
 class Phase():
     """Defines network phases.
 
@@ -248,13 +228,12 @@ class Phase():
     begin_event_type: Type[Event]
     end_event_type: Type[Event]
 
-    def __init__(self, name: str, phase_type: str) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.type = PhaseType.get_phase_type(phase_type)
         Phase.registry[name] = self
 
-    def __key(self) -> Tuple[str, PhaseType]:
-        return (self.name, self.type)
+    def __key(self) -> str:
+        return self.name
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Phase):
@@ -290,9 +269,9 @@ class Phase():
                 "No phase with name {0} exists.".format(phase_name))
 
 
-NonePhase = Phase(name="none", phase_type="none")
-PlusPhase = Phase(name="plus", phase_type="plus")
-MinusPhase = Phase(name="minus", phase_type="minus")
+NonePhase = Phase(name="none")
+PlusPhase = Phase(name="plus")
+MinusPhase = Phase(name="minus")
 
 
 class BeginPhase(Event):
