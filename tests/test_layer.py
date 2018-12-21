@@ -11,6 +11,7 @@ import torch  # type: ignore
 from leabra7 import layer as lr
 from leabra7 import events as ev
 from leabra7 import specs as sp
+from leabra7 import oscill as osc
 
 
 def test_parse_unit_attribute_strips_the_unit_prefix() -> None:
@@ -48,6 +49,23 @@ def test_layer_should_be_able_to_compute_its_average_net_input() -> None:
     layer.units.net[0] = 0
     layer.units.net[1] = 1
     assert layer.avg_net == 0.5
+
+
+def test_layer_change_and_reset_inhibition() -> None:
+    layer = lr.Layer(name="in", size=10)
+    layer._set_kwta(0.9)
+    assert layer.k == 9
+
+    layer._reset_kwta()
+    assert layer.k != 9
+
+
+def test_layer_verifies_inhibition() -> None:
+    layer = lr.Layer(name="in", size=1)
+    with pytest.raises(AssertionError):
+        layer._set_kwta(1.9)
+    with pytest.raises(AssertionError):
+        layer._set_kwta(-0.1)
 
 
 @given(
@@ -179,3 +197,43 @@ def test_end_trial_event_saves_activations() -> None:
     layer.hard_clamp([1, 0, 1])
     layer.handle(ev.EndTrial())
     assert (layer.acts_t == torch.Tensor([0.95, 0, 0.95])).all()
+
+
+def test_oscill_inhib_event(mocker) -> None:
+    layer = lr.Layer("lr1", 3)
+    theta = osc.Oscill("theta1", ["lr1", "lr2"])
+    theta.cycle()
+    mocker.spy(layer, "_set_kwta")
+    layer.handle(ev.OscillInhibition(theta.get_inhib(), theta.layer_names))
+    layer._set_kwta.assert_called_once()
+
+
+def test_oscill_inhib_event_mismatch(mocker) -> None:
+    layer = lr.Layer("lr1", 3)
+    theta = osc.Oscill("theta1", ["lr2"])
+    theta.cycle()
+    mocker.spy(layer, "_set_kwta")
+    layer.handle(ev.OscillInhibition(theta.get_inhib(), theta.layer_names))
+
+    with pytest.raises(AssertionError):
+        layer._set_kwta.assert_called_once()
+
+
+def test_oscill_reset_inhib_event(mocker) -> None:
+    layer = lr.Layer("lr1", 3)
+    theta = osc.Oscill("theta1", ["lr1", "lr2"])
+    theta.cycle()
+    mocker.spy(layer, "_set_kwta")
+    layer.handle(ev.OscillEndInhibition(theta.layer_names))
+    layer._reset_kwta.assert_called_once()
+
+
+def test_oscill_reset_inhib_event(mocker) -> None:
+    layer = lr.Layer("lr1", 3)
+    theta = osc.Oscill("theta1", ["lr2"])
+    theta.cycle()
+    mocker.spy(layer, "_reset_kwta")
+    layer.handle(ev.EndOscillInhibition(theta.layer_names))
+
+    with pytest.raises(AssertionError):
+        layer._reset_kwta.assert_called_once()

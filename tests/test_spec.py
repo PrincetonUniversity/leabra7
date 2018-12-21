@@ -293,6 +293,39 @@ def test_it_should_check_for_invalid_clamp_max(f) -> None:
         sp.LayerSpec(clamp_max=f).validate()
 
 
+@given(float_outside_range(0, 1.0))
+def test_oscill_validates_mid(f) -> None:
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(mid=f).validate()
+
+
+def test_oscill_validates_amps_periods_mismatch() -> None:
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(amps=[0.1], periods=[100, 100]).validate()
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(amps=[0.1, 0.2], periods=[100]).validate()
+
+
+@given(float_outside_range(0, 1.0))
+def test_oscill_validates_amps(f) -> None:
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(amps=None).validate()
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(amps=[f, 0]).validate()
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(amps=[0, f]).validate()
+
+
+@given(st.integers(max_value=0))
+def test_oscill_validates_periods(i) -> None:
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(periods=None).validate()
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(periods=[i, 100]).validate()
+    with pytest.raises(sp.ValidationError):
+        sp.OscillSpec(periods=[100, i]).validate()
+
+
 # Test ProjnSpec validation
 @given(float_outside_range(0, float("Inf")))
 def test_projn_spec_validates_integ(f) -> None:
