@@ -2,6 +2,7 @@
 import abc
 import inspect
 from typing import Dict
+from typing import List
 from typing import Set
 from typing import Sequence
 from typing import Tuple
@@ -102,6 +103,31 @@ class UninhibitProjns(Event):
 
     def __init__(self, *projn_names: str) -> None:
         self.projn_names = projn_names
+
+
+class OscillInhibition(Event):
+    """The event that oscillates inhibition in layers.
+
+    Args:
+        inhib: The inhibition value.
+        layer_names: Names of the layers on which the inhibition is applied.
+
+    """
+
+    def __init__(self, inhib: float, layer_names: List[str]) -> None:
+        self.inhib = inhib
+        self.layer_names = layer_names
+
+
+class EndOscillInhibition(Event):
+    """The event that ends oscillation inhibition in layers.
+
+    Args:
+        layer_names: Names of the layers on which the inhibition is applied.
+    """
+
+    def __init__(self, layer_names: List[str]) -> None:
+        self.layer_names = layer_names
 
 
 class HardClamp(Event):

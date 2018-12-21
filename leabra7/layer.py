@@ -130,6 +130,15 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         """Overrides `ObservableMixin.spec`."""
         return self._spec
 
+    def _reset_kwta(self) -> None:
+        """Resets kwta inhibition"""
+        self.k = max(1, int(round(self.size * self.spec.kwta_pct)))
+
+    def _set_kwta(self, inhib: float) -> None:
+        """Sets kwta inhibition"""
+        assert 0 <= inhib <= 1
+        self.k = max(1, int(round(self.size * inhib)))
+
     def add_input(self, inpt: torch.Tensor, wt_scale_rel: float = 1.0) -> None:
         """Adds an input to the layer.
 
@@ -269,5 +278,11 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
             for phase in events.Phase.phases():
                 if event.phase == phase:
                     self.phase_acts[phase].copy_(self.units.act)
+        elif isinstance(event, events.OscillInhibition):
+            if self.name in event.layer_names:
+                self._set_kwta(event.inhib)
+        elif isinstance(event, events.EndOscillInhibition):
+            if self.name in event.layer_names:
+                self._reset_kwta()
         elif isinstance(event, events.EndTrial):
             self.update_trial_learning_averages()

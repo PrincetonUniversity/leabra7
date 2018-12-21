@@ -14,55 +14,6 @@ from leabra7 import net
 from leabra7 import specs
 
 
-def test_network_can_be_saved() -> None:
-    n = net.Net()
-    location = "tests/mynet.pkl"
-    n.save(location)
-
-
-def test_network_can_be_retrieved_and_continue_logging() -> None:
-    n = net.Net()
-    n.new_layer(
-        "layer1",
-        2,
-        spec=specs.LayerSpec(log_on_cycle=(
-            "unit_act",
-            "avg_act",
-        )))
-    for i in range(2):
-        n.cycle()
-    n.pause_logging()
-
-    location = "tests/mynet.pkl"
-    n.save(location)
-    m = net.Net()
-    m.load(filename=location)
-
-    before_parts_n = n.logs("cycle", "layer1").parts
-    before_parts_m = m.logs("cycle", "layer1").parts
-
-    before_whole_n = n.logs("cycle", "layer1").whole
-    before_whole_m = m.logs("cycle", "layer1").whole
-
-    assert np.all((before_parts_n == before_parts_m).values)
-    assert np.all((before_whole_n == before_whole_m).values)
-
-    for i in range(2):
-        m.cycle()
-    m.resume_logging()
-    for i in range(2):
-        m.cycle()
-
-    after_parts_time = torch.Tensor(m.logs("cycle", "layer1").parts["time"])
-    after_whole_time = torch.Tensor(m.logs("cycle", "layer1").whole["time"])
-
-    assert list(after_parts_time.size()) == [8]
-    assert list(after_whole_time.size()) == [4]
-
-    assert (after_parts_time == torch.Tensor([0, 0, 1, 1, 4, 4, 5, 5])).all()
-    assert (after_whole_time == torch.Tensor([0, 1, 4, 5])).all()
-
-
 def test_the_network_can_check_if_an_object_exists_within_it() -> None:
     n = net.Net()
     n.new_layer("layer1", 3)
@@ -276,6 +227,68 @@ def test_net_catches_uninhibit_bad_projn_name() -> None:
 
     with pytest.raises(ValueError):
         n.uninhibit_projns("pr1", "pr5", "pr3")
+
+
+def test_the_network_can_remove_oscill_by_name() -> None:
+    n = net.Net()
+    n.new_oscill("theta1", [])
+    n.new_oscill("theta2", [])
+    n._validate_oscill_name("theta1")
+    n._validate_oscill_name("theta2")
+    n.rem_oscill("theta1")
+    with pytest.raises(ValueError):
+        n._validate_oscill_name("theta1")
+    n._validate_oscill_name("theta2")
+
+
+def test_the_network_can_get_a_oscill_by_name() -> None:
+    n = net.Net()
+    n.new_layer("lr1", 1)
+    n.new_layer("lr2", 1)
+    n.new_oscill("theta", ["lr1", "lr2"])
+
+    assert n._get_oscill("theta") is n.oscills["theta"]
+
+
+def test_the_network_can_validate_oscill_names() -> None:
+    n = net.Net()
+    n.new_layer("lr1", 1)
+    n.new_layer("lr2", 1)
+    n.new_oscill("theta", ["lr1", "lr2"])
+
+    n._validate_oscill_name("theta")
+
+    with pytest.raises(ValueError):
+        n._validate_oscill_name("whales")
+
+
+def test_a_new_oscill_validates_its_spec() -> None:
+    n = net.Net()
+    n.new_layer("layer1", 3)
+    n.new_layer("layer2", 3)
+
+    with pytest.raises(specs.ValidationError):
+        n.new_oscill(
+            "theta", ["layer1", "layer2"], spec=specs.OscillSpec(mid=-1))
+
+
+def test_you_can_create_an_oscill_with_a_default_spec() -> None:
+    n = net.Net()
+    n.new_layer("layer1", 3)
+    n.new_layer("layer2", 3)
+    n.new_oscill("theta", ["layer1", "layer2"])
+
+
+def test_projn_checks_if_the_receiving_layer_names_are_valid() -> None:
+    n = net.Net()
+    n.new_layer("layer1", 3)
+
+    with pytest.raises(ValueError):
+        n.new_oscill("theta", ["layer2"])
+    with pytest.raises(ValueError):
+        n.new_oscill("theta", ["layer1", "layer2"])
+    with pytest.raises(ValueError):
+        n.new_oscill("theta", ["layer2", "layer1"])
 
 
 # Right now, it's difficult to test net.cycle(), because it's the core of the
@@ -611,3 +624,25 @@ def test_you_can_signal_the_end_of_a_batch(mocker) -> None:
     mocker.spy(n, "handle")
     n.end_batch()
     assert isinstance(n.handle.call_args_list[0][0][0], events.EndBatch)
+
+
+def test_net_oscill_phase_cycle() -> None:
+    n = net.Net()
+    n.new_layer("layer1", 3)
+    n.new_layer("layer2", 3)
+    n.new_projn("projn1", "layer1", "layer2")
+    n.new_oscill("theta1", ["layer1"])
+    n.new_oscill("theta2", ["layer2"], spec=specs.OscillSpec(mid=0.7))
+    n.phase_cycle(events.PlusPhase, 10)
+    n.rem_oscill("theta1", "theta2")
+    n.phase_cycle(events.PlusPhase, 10)
+
+
+def test_net_validates_rem_oscill() -> None:
+    n = net.Net()
+    n.new_layer("layer1", 3)
+    n.new_layer("layer2", 3)
+    n.new_oscill("theta", ["layer1"])
+    n.rem_oscill("theta")
+    with pytest.raises(ValueError):
+        n.rem_oscill("theta")

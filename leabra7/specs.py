@@ -278,6 +278,41 @@ class LayerSpec(ObservableSpec):
         self.unit_spec.validate()
 
 
+class OscillSpec(Spec):
+    """Spec for inhibition oscillation objects."""
+    # Proportion of winners for k-winner-take-all inhibition
+    mid = 0.1
+    # Amplitudes
+    amps = [0.01, 0.2]
+    # Periods
+    periods = [100, 100]
+
+    def validate(self) -> None:
+        """Extends `Spec.validate`."""
+        super().validate()
+
+        self.assert_in_range("mid", 0.0, 1.0)
+
+        if self.amps is None:
+            raise ValidationError("Must define amplitudes.")
+        if self.periods is None:
+            raise ValidationError("Must define periods.")
+
+        if len(self.amps) != len(self.periods):
+            raise ValidationError(
+                "Amplitudes and periods must have the same dimension.")
+
+        for a in self.amps:
+            if not 0.0 <= a <= 1.0:
+                msg = "{0} must be in the interval [{1}, {2}].".format(
+                    a, 0.0, 1.0)
+                raise ValidationError(msg)
+
+        for p in self.periods:
+            if p <= 0:
+                raise ValidationError("Periods must have positive length.")
+
+
 class ProjnSpec(ObservableSpec):
     """Spec for `Projn` objects."""
     # The probability distribution from which the connection weights will be

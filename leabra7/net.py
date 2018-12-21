@@ -3,12 +3,12 @@ from typing import Dict
 from typing import List
 from typing import Sequence
 
-import pickle
 import pandas as pd  # type: ignore
 
 from leabra7 import layer
 from leabra7 import log
 from leabra7 import events
+from leabra7 import oscill as osc
 from leabra7 import projn
 from leabra7 import specs
 
@@ -22,6 +22,7 @@ class Net(events.EventListenerMixin):
         self.objs: Dict[str, events.EventListenerMixin] = {}
         self.layers: Dict[str, layer.Layer] = {}
         self.projns: Dict[str, projn.Projn] = {}
+        self.oscills: Dict[str, osc.Oscill] = {}
         self.loggers: List[log.Logger] = []
 
     def _validate_obj_name(self, *names: str) -> None:
@@ -100,6 +101,36 @@ class Net(events.EventListenerMixin):
         self._validate_projn_name(name)
         return self.projns[name]
 
+    def _validate_oscill_name(self, *names: str) -> None:
+        """Checks if an oscillation name exists.
+
+        Args:
+          names: The names of the oscillations.
+
+        Raises:
+          ValueError: If no oscillation with such a name exists.
+
+        """
+        for name in names:
+            if name not in self.oscills:
+                raise ValueError(
+                    "Name {0} does not refer to a oscillation.".format(name))
+
+    def _get_oscill(self, name: str) -> osc.Oscill:
+        """Gets a oscillation by name.
+
+        Args:
+            name: The name of the oscillation.
+
+        Raises:
+            ValueError: If the name does not refer to a oscillation.
+                This is not AssertionError because it is intended to be called
+                within user-facing methods.
+
+        """
+        self._validate_oscill_name(name)
+        return self.oscills[name]
+
     def _add_loggers(self, obj: log.ObservableMixin) -> None:
         """Instantiates loggers for an observable object.
 
@@ -114,31 +145,6 @@ class Net(events.EventListenerMixin):
                 self.loggers.append(logger)
                 self.objs["{0}_{1}_logger".format(obj.name,
                                                   freq_name)] = logger
-
-    def save(self, filename: str) -> None:
-        """Saves network as pickle file.
-
-        Args:
-            filename: Location of where to save pickle file.
-
-        """
-        pickle.dump(self, open(filename, "wb"))
-
-    def load(self, filename: str) -> None:
-        """Loads network from file.
-
-        Args:
-            filename: Location of pickle file storing the network.
-
-
-        **Be careful not to load malicious or untrusted files.**
-
-        """
-        loaded_net = pickle.load(open(filename, "rb"))
-        self.objs = loaded_net.objs
-        self.layers = loaded_net.layers
-        self.projns = loaded_net.projns
-        self.loggers = loaded_net.loggers
 
     def new_layer(self, name: str, size: int,
                   spec: specs.LayerSpec = None) -> None:
@@ -248,6 +254,50 @@ class Net(events.EventListenerMixin):
         self._validate_projn_name(*projn_names)
         self.handle(events.UninhibitProjns(*projn_names))
 
+    def new_oscill(self,
+                   name: str,
+                   layer_names: List[str],
+                   spec: specs.OscillSpec = None) -> None:
+        """Adds a new oscillation to the network.
+
+        Args:
+            name: The name of the oscillation.
+            layer_names: The names of the layers which oscillate.
+            spec: The oscillation specification.
+
+        Raises:
+            ValueError: If `layer_names` do not match any existing layer
+                name.
+            spec.ValidationError: If the spec contains an invalid parameter
+                value.
+
+        """
+        if spec is not None:
+            spec.validate()
+
+        self._validate_layer_name(*layer_names)
+
+        on = osc.Oscill(name, layer_names, spec=spec)
+        self.oscills[name] = on
+        self.objs[name] = on
+
+    def rem_oscill(self, *names: str) -> None:
+        """Remove an oscillation from the network.
+
+        Args:
+            *names: The names of the oscillation.
+
+        Raise:
+            ValueError: if name in names is not an oscillation in the network.
+
+        """
+        self._validate_oscill_name(*names)
+        for name in names:
+            self.handle(
+                events.EndOscillInhibition(self.oscills[name].layer_names))
+            self.oscills.pop(name, None)
+            self.objs.pop(name, None)
+
     def _cycle(self) -> None:
         """Cycles the network (triggered by cycle event)."""
         for _, lr in self.layers.items():
@@ -260,7 +310,7 @@ class Net(events.EventListenerMixin):
         """Cycles the network."""
         self.handle(events.Cycle())
 
-    def phase_cycle(self, phase: events.Phase, num_cycles: int = 50) -> None:
+    def phase_cycle(self, phase: events.Phase, num_cycles: int) -> None:
         """Runs a series of cycles for the trial phase.
 
         Args:
@@ -278,6 +328,9 @@ class Net(events.EventListenerMixin):
             raise ValueError("Number of cycles must be >= 1.")
         self.handle(events.BeginPhase(phase))
         for _ in range(num_cycles):
+            for on in self.oscills.values():
+                self.handle(
+                    events.OscillInhibition(on.get_inhib(), on.layer_names))
             self.handle(events.Cycle())
         self.handle(events.EndPhase(phase))
 
