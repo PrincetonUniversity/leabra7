@@ -69,6 +69,8 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         self.gc_i = 0.0
         # Is the layer activation clamped?
         self.clamped = False
+        # Is the layer hard clamped?
+        self.hard = True
         # Is this a hidden layer? (i.e. has never been clamped)
         self.hidden = True
         # Set k units for inhibition
@@ -162,6 +164,8 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
             self.input_buffer /= self.wt_scale_rel_sum
 
         self.units.add_input(self.input_buffer)
+        if not self.hard and self.clamped:
+            self.units.add_input(self.act_ext)
         self.units.update_net()
 
     def calc_fffb_inhibition(self) -> None:
@@ -206,7 +210,7 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
 
     def activation_cycle(self) -> None:
         """Runs one complete activation cycle of the layer."""
-        if not self.clamped:
+        if not self.clamped or not self.hard:
             self.update_net()
             self.update_inhibition()
             self.units.update_membrane_potential()
@@ -237,7 +241,7 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         """The long learning average for each unit."""
         return self.units.avg_l
 
-    def hard_clamp(self, act_ext: Iterable[float]) -> None:
+    def clamp(self, act_ext: Iterable[float], hard: bool = True) -> None:
         """Forces the layer's activations.
 
         After forcing, the layer's activations will be set to the values
@@ -251,11 +255,13 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
 
         """
         self.clamped = True
+        self.hard = hard
         self.hidden = False
         trimmed = utils.clip_iterable(0.0, self.spec.clamp_max, act_ext)
         self.act_ext = torch.Tensor(
             list(itertools.islice(itertools.cycle(trimmed), self.size)))
-        self.units.hard_clamp(self.act_ext)
+        if self.hard:
+            self.units.hard_clamp(self.act_ext)
 
     def unclamp(self) -> None:
         """Unclamps the layer."""
@@ -268,9 +274,9 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         return self.units.observe(parsed)
 
     def handle(self, event: events.Event) -> None:
-        if isinstance(event, events.HardClamp):
+        if isinstance(event, events.Clamp):
             if event.layer_name == self.name:
-                self.hard_clamp(event.acts)
+                self.clamp(event.acts, event.hard)
         elif isinstance(event, events.Unclamp):
             if self.name in event.layer_names:
                 self.unclamp()

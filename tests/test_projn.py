@@ -51,7 +51,7 @@ def test_projn_can_inhibit_flush() -> None:
     post = lr.Layer("lr2", size=1)
     projn = pr.Projn("proj", pre, post)
 
-    pre.hard_clamp(act_ext=[1])
+    pre.clamp(act_ext=[1])
     projn.inhibit()
 
     projn.flush()
@@ -64,7 +64,7 @@ def test_projn_can_uninhibit_flush() -> None:
     post = lr.Layer("lr2", size=1)
     projn = pr.Projn("proj", pre, post)
 
-    pre.hard_clamp(act_ext=[1])
+    pre.clamp(act_ext=[1])
 
     projn.handle(ev.InhibitProjns("proj"))
     projn.flush()
@@ -79,7 +79,7 @@ def test_projn_inhibit_handling_event() -> None:
     post = lr.Layer("lr2", size=1)
     projn = pr.Projn("proj", pre, post)
 
-    pre.hard_clamp(act_ext=[1])
+    pre.clamp(act_ext=[1])
     projn.handle(ev.InhibitProjns("proj"))
 
     projn.flush()
@@ -235,8 +235,8 @@ def test_projn_can_calculate_netin_scale_with_full_connectivity(x, y, z,
     pre_b = lr.Layer("lr2", size=y)
     post = lr.Layer("lr3", size=z)
 
-    pre_a.hard_clamp(torch.ones(x) * f)
-    pre_b.hard_clamp(torch.ones(y) * f)
+    pre_a.clamp(torch.ones(x) * f)
+    pre_b.clamp(torch.ones(y) * f)
 
     projn_a = pr.Projn("proj1", pre_a, post)
     projn_b = pr.Projn("proj2", pre_b, post)
@@ -269,8 +269,8 @@ def test_projn_can_calculate_netin_scale_with_partial_connectivity(
 
     spec = sp.ProjnSpec(post_mask=(True, ) * m + (False, ) * n)
 
-    pre_a.hard_clamp(torch.ones(x) * f)
-    pre_b.hard_clamp(torch.ones(x) * f)
+    pre_a.clamp(torch.ones(x) * f)
+    pre_b.clamp(torch.ones(x) * f)
 
     projn_a = pr.Projn("proj1", pre_a, post)
     projn_b = pr.Projn("proj2", pre_b, post, spec)

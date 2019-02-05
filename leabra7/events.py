@@ -130,7 +130,7 @@ class EndOscillInhibition(Event):
         self.layer_names = layer_names
 
 
-class HardClamp(Event):
+class Clamp(Event):
     """The event that hard clamps a layer.
 
     Args:
@@ -143,11 +143,15 @@ class HardClamp(Event):
 
     """
 
-    def __init__(self, layer_name: str, acts: Sequence[float]) -> None:
+    def __init__(self,
+                 layer_name: str,
+                 acts: Sequence[float],
+                 hard: bool = True) -> None:
         self.layer_name = layer_name
         if not all(0 <= i <= 1 for i in acts):
             raise ValueError("All values of acts must be in [0, 1].")
         self.acts = acts
+        self.hard = hard
 
 
 class Unclamp(Event):
