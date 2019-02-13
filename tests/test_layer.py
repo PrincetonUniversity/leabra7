@@ -130,6 +130,26 @@ def test_observing_invalid_parts_attribute_should_raise_error() -> None:
         layer.observe_parts_attr("whales")
 
 
+def test_layer_soft_clamping_equivalent_to_input() -> None:
+    layer1 = lr.Layer(name="test", size=3)
+    layer2 = lr.Layer(name="alt", size=3, spec=sp.LayerSpec(clamp_max=1))
+
+    layer2.clamp([0, 1, 0], hard=False)
+
+    for i in range(50):
+        layer1.add_input(torch.Tensor([0, 1, 0]))
+
+        layer1.activation_cycle()
+        layer2.activation_cycle()
+
+    print(layer1.units.act)
+    print(layer2.units.act)
+
+    for i in range(3):
+        assert math.isclose(
+            layer1.units.act[i], layer2.units.act[i], abs_tol=1e-6)
+
+
 def test_layer_can_update_learning_averages_when_clamped(mocker) -> None:
     layer = lr.Layer(name="layer1", size=3)
     mocker.spy(layer, "update_trial_learning_averages")

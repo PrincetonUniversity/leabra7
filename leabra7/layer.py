@@ -158,14 +158,15 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         """Updates the net input of the layer's units."""
         # self.wt_scale_rel_sum could be zero if there are no inbound
         # projections, or if the projections have not been flushed yet
+        if not self.hard and self.clamped:
+            self.add_input(self.act_ext)
+
         if self.wt_scale_rel_sum == 0:
             assert (self.input_buffer == 0).all()
         else:
             self.input_buffer /= self.wt_scale_rel_sum
 
         self.units.add_input(self.input_buffer)
-        if not self.hard and self.clamped:
-            self.units.add_input(self.act_ext)
         self.units.update_net()
 
     def calc_fffb_inhibition(self) -> None:
@@ -210,7 +211,7 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
 
     def activation_cycle(self) -> None:
         """Runs one complete activation cycle of the layer."""
-        if not self.clamped or not self.hard:
+        if not (self.clamped and self.hard):
             self.update_net()
             self.update_inhibition()
             self.units.update_membrane_potential()

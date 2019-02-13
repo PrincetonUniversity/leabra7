@@ -131,12 +131,13 @@ class EndOscillInhibition(Event):
 
 
 class Clamp(Event):
-    """The event that hard clamps a layer.
+    """The event that clamps a layer.
 
     Args:
       layer_name: The name of the layer to hard clamp.
       acts: A sequence of the activations to clamp the layer to. If there are
         fewer values than the number of units in the layer, it will be tiled.
+      hard: Hard or soft clamping. (default: True)
 
     Raises:
       ValueError: If any value of acts is outside the range [0, 1].
