@@ -1,9 +1,4 @@
 # leabra7
-[![Anaconda-Server Badge](https://anaconda.org/cdg4/leabra7/badges/version.svg)](https://anaconda.org/cdg4/leabra7) [![Documentation Status](https://readthedocs.org/projects/leabra7/badge/?version=latest)](https://leabra7.readthedocs.io/en/latest/?badge=latest) [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/cdgreenidge/leabra7/master?filepath=notebooks)
-
-| linux | windows | coverage |
-|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| [![Build Status](https://travis-ci.org/cdgreenidge/leabra7.svg?branch=windows-ci)](https://travis-ci.org/cdgreenidge/leabra7) | [![Build status](https://ci.appveyor.com/api/projects/status/pu47got47lql75j2/branch/master?svg=true)](https://ci.appveyor.com/project/cdgreenidge/leabra7/branch/master) | [![codecov](https://codecov.io/gh/cdgreenidge/leabra7/branch/master/graph/badge.svg)](https://codecov.io/gh/cdgreenidge/leabra7) |
 
 **leabra7** is an implementation of the "Local, Error-driven and Associative,
 Biologically Realistic Algorithm" ([LEABRA](https://grey.colorado.edu/emergent/index.php/Leabra))
@@ -22,28 +17,7 @@ To get started, check out the
 **[documentation](https://leabra7.readthedocs.io/en/latest/?)** for an
 installation guide and tutorial.
 
-
-## Quick install
-
-### Prerequisites
-- Anaconda Distribution of Python 3. See the [Anaconda Installation Guide](https://conda.io/docs/user-guide/install/download.html)
-  for installation instructions.
-- The [conda](https://www.anaconda.com/distribution/) package manager.
-
-### For users
-
-Run the following commands to add the necessary conda channels:
-
-```
-$ conda config --append channels pytorch
-$ conda config --append channels conda-forge
-```
-
-Now, you can install leabra7 with
-
-```
-$ conda install -c cdg4 leabra7
-```
+Please see Daniel Greenidge's **[build](https://github.com/cdgreenidge/leabra7)** for a more stable release.
 
 ### For developers
 
@@ -53,7 +27,7 @@ First, clone the repository. It can go anywhere, as long as you do not delete
 it after installation:
 
 ```
-$ git clone https://github.com/cdgreenidge/leabra7.git
+$ git clone https://github.com/PrincetonUniversity/leabra7.git
 ```
 
 Run the following commands to add the necessary conda channels and
