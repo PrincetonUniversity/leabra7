@@ -130,24 +130,29 @@ class EndOscillInhibition(Event):
         self.layer_names = layer_names
 
 
-class HardClamp(Event):
-    """The event that hard clamps a layer.
+class Clamp(Event):
+    """The event that clamps a layer.
 
     Args:
       layer_name: The name of the layer to hard clamp.
       acts: A sequence of the activations to clamp the layer to. If there are
         fewer values than the number of units in the layer, it will be tiled.
+      hard: Hard or soft clamping. (default: True)
 
     Raises:
       ValueError: If any value of acts is outside the range [0, 1].
 
     """
 
-    def __init__(self, layer_name: str, acts: Sequence[float]) -> None:
+    def __init__(self,
+                 layer_name: str,
+                 acts: Sequence[float],
+                 hard: bool = True) -> None:
         self.layer_name = layer_name
         if not all(0 <= i <= 1 for i in acts):
             raise ValueError("All values of acts must be in [0, 1].")
         self.acts = acts
+        self.hard = hard
 
 
 class Unclamp(Event):

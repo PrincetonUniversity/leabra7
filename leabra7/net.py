@@ -167,7 +167,8 @@ class Net(events.EventListenerMixin):
         self.objs[name] = lr
         self._add_loggers(lr)
 
-    def clamp_layer(self, name: str, acts: Sequence[float]) -> None:
+    def clamp_layer(self, name: str, acts: Sequence[float],
+                    hard: bool = True) -> None:
         """Clamps the layer's activations.
 
         After forcing, the layer's activations will be set to the values
@@ -179,12 +180,13 @@ class Net(events.EventListenerMixin):
                 units will be clamped to. If its length is less than the number
                 of units in the layer, it will be tiled. If its length is
                 greater, the extra values will be ignored.
+            hard: Toggles hard or soft clamping. (default: True)
 
         ValueError: If `name` does not match any existing layer name.
 
         """
         self._validate_layer_name(name)
-        self.handle(events.HardClamp(name, acts))
+        self.handle(events.Clamp(name, acts, hard))
 
     def unclamp_layer(self, *layer_names: str) -> None:
         """Unclamps the layers' activations.
