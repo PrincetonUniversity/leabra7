@@ -5,7 +5,9 @@ from leabra7.events import PlusPhase
 from leabra7.events import MinusPhase
 from leabra7.events import NonePhase
 from leabra7.net import Net
+from leabra7.net import Oscill
 from leabra7.specs import LayerSpec
+from leabra7.specs import OscillSpec
 from leabra7.specs import ProjnSpec
 from leabra7.specs import UnitSpec
 from leabra7.rand import Exponential
