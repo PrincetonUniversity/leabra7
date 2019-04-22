@@ -167,8 +167,11 @@ class Net(events.EventListenerMixin):
         self.objs[name] = lr
         self._add_loggers(lr)
 
-    def clamp_layer(self, name: str, acts: Sequence[float],
-                    hard: bool = True) -> None:
+    def clamp_layer(self,
+                    name: str,
+                    acts: Sequence[float],
+                    hard: bool = True,
+                    weight: float = 1.0) -> None:
         """Clamps the layer's activations.
 
         After forcing, the layer's activations will be set to the values
@@ -181,12 +184,13 @@ class Net(events.EventListenerMixin):
                 of units in the layer, it will be tiled. If its length is
                 greater, the extra values will be ignored.
             hard: Toggles hard or soft clamping. (default: True)
+            weight: Weighting on clamping (default: 1.0)
 
         ValueError: If `name` does not match any existing layer name.
 
         """
         self._validate_layer_name(name)
-        self.handle(events.Clamp(name, acts, hard))
+        self.handle(events.Clamp(name, acts, hard, weight))
 
     def unclamp_layer(self, *layer_names: str) -> None:
         """Unclamps the layers' activations.
@@ -339,6 +343,18 @@ class Net(events.EventListenerMixin):
     def end_trial(self) -> None:
         """Signals to the network the end of a trial."""
         self.handle(events.EndTrial())
+
+    def clear_activity(self, *layer_names: str) -> None:
+        """Clears activity of specified layers.
+
+        Args:
+            layer_names: Names of layers to have activity clear
+
+        Raises:
+            ValueError: if name in layer_names does not exist.
+
+        """
+        self.handle(events.ClearActivity(*layer_names))
 
     def end_epoch(self) -> None:
         """Signals to the network that an epoch has ended."""

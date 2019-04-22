@@ -73,6 +73,8 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         self.hard = True
         # Is this a hidden layer? (i.e. has never been clamped)
         self.hidden = True
+        # Weight
+        self.weight = 1.0
         # Set k units for inhibition
         self.k = max(1, int(round(self.size * self.spec.kwta_pct)))
 
@@ -159,7 +161,7 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         # self.wt_scale_rel_sum could be zero if there are no inbound
         # projections, or if the projections have not been flushed yet
         if not self.hard and self.clamped:
-            self.add_input(self.act_ext)
+            self.add_input(self.weight * self.act_ext)
 
         if self.wt_scale_rel_sum == 0:
             assert (self.input_buffer == 0).all()
@@ -227,6 +229,10 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         acts_t_avg_eff = self.acts_t.mean()
         self.units.update_trial_learning_averages(acts_t_avg_eff)
 
+    def clear(self) -> None:
+        """Clears activity in layer."""
+        self.units.clear()
+
     @property
     def avg_s(self) -> torch.Tensor:
         """The short learning average for each unit."""
@@ -242,7 +248,10 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         """The long learning average for each unit."""
         return self.units.avg_l
 
-    def clamp(self, act_ext: Iterable[float], hard: bool = True) -> None:
+    def clamp(self,
+              act_ext: Iterable[float],
+              hard: bool = True,
+              weight: float = 1.0) -> None:
         """Forces the layer's activations.
 
         After forcing, the layer's activations will be set to the values
@@ -258,6 +267,7 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
         self.clamped = True
         self.hard = hard
         self.hidden = False
+        self.weight = weight
         trimmed = utils.clip_iterable(0.0, self.spec.clamp_max, act_ext)
         self.act_ext = torch.Tensor(
             list(itertools.islice(itertools.cycle(trimmed), self.size)))
@@ -277,7 +287,7 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
     def handle(self, event: events.Event) -> None:
         if isinstance(event, events.Clamp):
             if event.layer_name == self.name:
-                self.clamp(event.acts, event.hard)
+                self.clamp(event.acts, event.hard, event.weight)
         elif isinstance(event, events.Unclamp):
             if self.name in event.layer_names:
                 self.unclamp()
@@ -293,3 +303,6 @@ class Layer(log.ObservableMixin, events.EventListenerMixin):
                 self._reset_kwta()
         elif isinstance(event, events.EndTrial):
             self.update_trial_learning_averages()
+        elif isinstance(event, events.ClearActivity):
+            if self.name in event.layer_names:
+                self.clear()
