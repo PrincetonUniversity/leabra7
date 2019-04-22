@@ -161,6 +161,26 @@ class UnitGroup:
         # Long learning average
         self.avg_l = torch.Tensor(self.size).zero_()
 
+    def clear(self) -> None:
+        """Clears activity in layer."""
+
+        self.net_raw = torch.Tensor(self.size).zero_()
+        self.net = torch.Tensor(self.size).zero_()
+        self.gc_i = torch.Tensor(self.size).zero_()
+        self.act_nd = torch.Tensor(self.size).zero_()
+        self.act = torch.Tensor(self.size).zero_()
+        self.i_net = torch.Tensor(self.size).zero_()
+        self.i_net_r = torch.Tensor(self.size).zero_()
+        self.v_m = torch.Tensor(self.size).zero_()
+        self.v_m_eq = torch.Tensor(self.size).zero_()
+        self.adapt = torch.Tensor(self.size).zero_()
+        self.spike = torch.Tensor(self.size).zero_()
+
+        self.avg_ss = torch.Tensor(self.size).zero_()
+        self.avg_s = torch.Tensor(self.size).zero_()
+        self.avg_m = torch.Tensor(self.size).zero_()
+        self.avg_l = torch.Tensor(self.size).zero_()
+
     def g_i_thr(self, unit_idx: int) -> float:
         """The inhibition that will place a unit at its spike threshold.
 

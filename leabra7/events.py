@@ -130,6 +130,17 @@ class EndOscillInhibition(Event):
         self.layer_names = layer_names
 
 
+class ClearActivity(Event):
+    """The event that clears activity in layers.
+
+    Args:
+        layer_names: Names of the layers to be cleared.
+    """
+
+    def __init__(self, *layer_names: str) -> None:
+        self.layer_names = layer_names
+
+
 class Clamp(Event):
     """The event that clamps a layer.
 
@@ -138,21 +149,27 @@ class Clamp(Event):
       acts: A sequence of the activations to clamp the layer to. If there are
         fewer values than the number of units in the layer, it will be tiled.
       hard: Hard or soft clamping. (default: True)
+      weight: Variable weight for clamping values (default: 1)
 
     Raises:
       ValueError: If any value of acts is outside the range [0, 1].
+      ValueError: If weight is less than 0.
 
     """
 
     def __init__(self,
                  layer_name: str,
                  acts: Sequence[float],
-                 hard: bool = True) -> None:
+                 hard: bool = True,
+                 weight: float = 1.0) -> None:
         self.layer_name = layer_name
         if not all(0 <= i <= 1 for i in acts):
             raise ValueError("All values of acts must be in [0, 1].")
+        if weight < 0:
+            raise ValueError("Weight must be nonnegative.")
         self.acts = acts
         self.hard = hard
+        self.weight = weight
 
 
 class Unclamp(Event):
